@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Examination Hub | Charity Educational Complex</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Block manual structural highlighting */
+        body { user-select: none; -webkit-user-select: none; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+    <div id="login-container" class="m-auto max-w-md w-full bg-white p-8 rounded-lg shadow-lg border-t-4 border-emerald-800">
+        <h2 class="text-2xl font-bold text-center text-emerald-800 mb-6">Student Access Gate</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold mb-1 text-gray-700">Unique Student ID</label>
+                <input type="text" id="studentId" class="w-full p-2 border rounded focus:ring-2 focus:ring-emerald-700">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold mb-1 text-gray-700">Portal Password</label>
+                <input type="password" id="studentPassword" class="w-full p-2 border rounded focus:ring-2 focus:ring-emerald-700">
+            </div>
+            <button onclick="loginPortal()" class="w-full bg-emerald-800 text-white font-bold py-2 rounded hover:bg-emerald-700 transition">Access My Account</button>
+        </div>
+    </div>
+
+    <div id="portal-dashboard" class="hidden container mx-auto px-6 py-8 flex-1 space-y-8">
+        <div class="bg-white p-6 rounded-lg shadow flex justify-between items-center border-b-4 border-yellow-400">
+            <div>
+                <h2 class="text-xl font-bold text-emerald-800">Welcome back, <span id="display-student-name">...</span></h2>
+                <p class="text-xs text-gray-500">System Registry Reference: <span id="display-student-id">...</span></p>
+            </div>
+            <button onclick="location.reload()" class="bg-red-600 text-white px-3 py-1 text-xs rounded hover:bg-red-700">Secure Exit</button>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-lg shadow space-y-4">
+                <h3 class="text-lg font-bold text-emerald-900 border-b pb-2">Published Report Cards</h3>
+                <div id="report-card-box" class="p-4 bg-gray-50 rounded text-center">
+                    </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow space-y-4">
+                <h3 class="text-lg font-bold text-emerald-900 border-b pb-2">Active Continuous Assessments</h3>
+                <div id="quiz-status-block" class="p-4 bg-emerald-50 rounded border border-emerald-200">
+                    <p class="text-sm text-emerald-900 font-semibold mb-3">Live Assessment: General Midterm Evaluation (10 Marks)</p>
+                    <button onclick="initiateExamination()" class="bg-emerald-800 text-white px-4 py-2 text-sm rounded font-bold hover:bg-emerald-700">Initialize Controlled Exam Module</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="exam-stage" class="hidden fixed inset-0 bg-gray-900 text-gray-900 z-50 p-6 overflow-y-auto flex flex-col justify-between">
+        <div class="max-w-3xl mx-auto w-full bg-white rounded-xl shadow-2xl p-8 my-auto space-y-6 relative">
+            <div class="flex justify-between items-center border-b pb-4">
+                <h3 class="text-xl font-bold text-red-700">PROCTORED LIVE EXAM ENVIRONMENT</h3>
+                <div class="text-sm bg-red-100 text-red-800 px-3 py-1 rounded font-bold">
+                    Violations: <span id="violation-count">0</span>
+                </div>
+            </div>
+            
+            <p class="text-xs text-gray-500 italic font-medium">⚠️ Security Notice: Swapping tasks, moving away from this active window, or triggering copy/paste inputs will log an official proctoring violation and lower your final score.</p>
+
+            <form id="examForm" class="space-y-6 pt-4">
+                <div>
+                    <label class="block font-bold mb-2">1. What is the official structural motto established at Charity Educational Complex?</label>
+                    <div class="space-y-2 text-sm">
+                        <label class="flex items-center space-x-2"><input type="radio" name="q1" value="A" required> <span>A) Knowledge is Golden</span></label>
+                        <label class="flex items-center space-x-2"><input type="radio" name="q1" value="B"> <span>B) Beyond excellent</span></label>
+                        <label class="flex items-center space-x-2"><input type="radio" name="q1" value="C"> <span>C) Forward Ever</span></label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold mb-2">2. In which administrative region of Ghana is our school located?</label>
+                    <div class="space-y-2 text-sm">
+                        <label class="flex items-center space-x-2"><input type="radio" name="q2" value="A" required> <span>A) Northern Region</span></label>
+                        <label class="flex items-center space-x-2"><input type="radio" name="q2" value="B"> <span>B) Savannah Region</span></label>
+                        <label class="flex items-center space-x-2"><input type="radio" name="q2" value="C"> <span>C) North East Region</span></label>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-800 text-white font-bold py-3 rounded hover:bg-emerald-700 tracking-wider">SUBMIT FINALISED TEST PAPERS</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let sessionStudentId = null;
+        let integrityViolations = 0;
+
+        async function loginPortal() {
+            const id = document.getElementById('studentId').value;
+            const pass = document.getElementById('studentPassword').value;
+
+            const res = await fetch('/api/student/login', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ studentId: id, password: pass })
+            });
+
+            if(res.ok) {
+                const profile = await res.json();
+                sessionStudentId = profile.id;
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('portal-dashboard').classList.remove('hidden');
+                
+                document.getElementById('display-student-name').innerText = profile.name;
+                document.getElementById('display-student-id').innerText = profile.id;
+
+                const cardBox = document.getElementById('report-card-box');
+                if(typeof profile.score === 'number') {
+                    cardBox.innerHTML = `
+                        <div class="p-2 border border-emerald-200 rounded bg-emerald-50">
+                            <p class="text-sm font-bold text-emerald-900">Midterm Grade: ${profile.score} / 10</p>
+                            <button onclick="window.print()" class="mt-2 text-xs bg-yellow-500 text-gray-900 px-3 py-1 font-bold rounded">Download Official Report Sheet</button>
+                        </div>
+                    `;
+                } else {
+                    cardBox.innerHTML = `<p class="text-sm text-gray-500 italic">Scores are currently being processed by school management.</p>`;
+                }
+            } else {
+                alert("Unauthorized Access Attempt: Match credentials properly.");
+            }
+        }
+
+        // Exam Lock down Engine
+        function initiateExamination() {
+            if(!confirm("Ready to enter the secure exam view? This will isolate execution control parameters.")) return;
+            
+            document.getElementById('exam-stage').classList.remove('hidden');
+            
+            // Hard Lock: Intercept copy, paste, and context menu actions
+            document.addEventListener('contextmenu', e => e.preventDefault());
+            document.addEventListener('copy', e => e.preventDefault());
+            document.addEventListener('paste', e => e.preventDefault());
+
+            // Track if user leaves the tab/app
+            window.addEventListener('blur', logSecurityInfraction);
+        }
+
+        function logSecurityInfraction() {
+            integrityViolations++;
+            document.getElementById('violation-count').innerText = integrityViolations;
+            alert("⚠️ PROCTORING ALERT: Window focus lost! Unauthorized workspace navigation detected. This event has been logged.");
+        }
+
+        document.getElementById('examForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Unbind security validation listeners
+            window.removeEventListener('blur', logSecurityInfraction);
+
+            const payload = {
+                studentId: sessionStudentId,
+                answers: {
+                    q1: document.querySelector('input[name="q1"]:checked').value,
+                    q2: document.querySelector('input[name="q2"]:checked').value,
+                },
+                cheatingViolations: integrityViolations
+            };
+
+            const res = await fetch('/api/student/submit-quiz', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            const result = await res.json();
+            alert(result.msg);
+            document.getElementById('exam-stage').classList.add('hidden');
+            location.reload();
+        });
+    </script>
+</body>
+</html>
