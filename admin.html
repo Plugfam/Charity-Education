@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Management Terminal | Charity Educational Complex</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-6">
+
+    <div id="admin-gate" class="max-w-md mx-auto mt-20 bg-gray-800 p-8 rounded-lg shadow-xl space-y-4 border border-emerald-500">
+        <h2 class="text-xl font-bold text-center text-emerald-400">Management Authorization Gateway</h2>
+        <input type="password" id="gatePass" placeholder="Enter Control Key" class="w-full p-2.5 rounded bg-gray-700 border-none text-white focus:ring-2 focus:ring-emerald-400">
+        <button onclick="unlockGate()" class="w-full bg-emerald-600 font-bold py-2 rounded hover:bg-emerald-500 transition">Establish Connection</button>
+    </div>
+
+    <div id="admin-console" class="hidden container mx-auto space-y-12">
+        <header class="border-b border-gray-700 pb-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black text-yellow-400 tracking-wider">CHARITY EDUCATIONAL COMPLEX CONTROL ROOM</h1>
+                <p class="text-xs text-gray-400">Operations Control Node</p>
+            </div>
+            <button onclick="location.reload()" class="bg-gray-700 text-xs px-3 py-1 rounded">Lock Console</button>
+        </header>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <section class="bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-4">
+                <h3 class="text-lg font-bold text-emerald-400">Staff Registry Management</h3>
+                <div class="flex gap-2">
+                    <input type="text" id="tName" placeholder="Full Name" class="p-2 rounded bg-gray-700 text-white text-sm flex-1">
+                    <input type="text" id="tRole" placeholder="Role (e.g., Mathematics Teacher)" class="p-2 rounded bg-gray-700 text-white text-sm flex-1">
+                    <button onclick="addTeacher()" class="bg-emerald-600 px-4 text-sm font-bold rounded hover:bg-emerald-500">Add</button>
+                </div>
+                <div id="teacher-ledger" class="space-y-2 pt-2">
+                    </div>
+            </section>
+
+            <section class="bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-4">
+                <h3 class="text-lg font-bold text-emerald-400">Student Access Control Provisioning</h3>
+                <div class="space-y-2">
+                    <input type="text" id="sId" placeholder="Assign Student ID (e.g., CEC2026-05)" class="w-full p-2 rounded bg-gray-700 text-white text-sm">
+                    <input type="text" id="sName" placeholder="Student Full Name" class="w-full p-2 rounded bg-gray-700 text-white text-sm">
+                    <input type="text" id="sPass" placeholder="Assign Custom Key/Password" class="w-full p-2 rounded bg-gray-700 text-white text-sm">
+                    <button onclick="provisionStudent()" class="w-full bg-yellow-500 text-gray-950 font-bold py-2 text-sm rounded hover:bg-yellow-400">Generate Student Credentials</button>
+                </div>
+            </section>
+        </div>
+
+        <section class="bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-4">
+            <h3 class="text-lg font-bold text-emerald-400">Assessment Submissions & Grade Dashboard</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-300">
+                    <thead class="bg-gray-700 text-xs text-yellow-400 uppercase">
+                        <tr>
+                            <th class="p-3">ID Reference</th>
+                            <th class="p-3">Full Name</th>
+                            <th class="p-3">Tab-Loss Violations</th>
+                            <th class="p-3">Raw Auto-Score</th>
+                            <th class="p-3 text-center">Adjust Grade / Manage Publication Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="submission-rows">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        async function unlockGate() {
+            const key = document.getElementById('gatePass').value;
+            const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ password: key })
+            });
+            if(res.ok) {
+                document.getElementById('admin-gate').classList.add('hidden');
+                document.getElementById('admin-console').classList.remove('hidden');
+                syncConsoleData();
+            } else {
+                alert("Access Denied: Invalid Credentials.");
+            }
+        }
+
+        async function syncConsoleData() {
+            // Load Teachers
+            const infoRes = await fetch('/api/info');
+            const info = await infoRes.json();
+            renderTeachers(info.teachers);
+
+            // Load Submissions & Student states
+            const subRes = await fetch('/api/admin/submissions');
+            const subData = await subRes.json();
+            renderSubmissions(subData.students);
+        }
+
+        function renderTeachers(list) {
+            const ledger = document.getElementById('teacher-ledger');
+            ledger.innerHTML = list.map(t => `
+                <div class="flex justify-between items-center bg-gray-700 p-2.5 rounded text-sm">
+                    <div><strong>${t.name}</strong> - <span class="text-gray-400">${t.role}</span></div>
+                    <div class="flex gap-2">
+                        <button onclick="updateTeacherPrompt(${t.id}, '${t.name}', '${t.role}')" class="text-xs text-yellow-400 hover:underline">Update</button>
+                        <button onclick="deleteTeacher(${t.id})" class="text-xs text-red-400 hover:underline">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addTeacher() {
+            const name = document.getElementById('tName').value;
+            const role = document.getElementById('tRole').value;
+            const res = await fetch('/api/admin/teachers', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ name, role })
+            });
+            const d = await res.json();
+            renderTeachers(d.teachers);
+            document.getElementById('tName').value = '';
+            document.getElementById('tRole').value = '';
+        }
+
+        async function deleteTeacher(id) {
+            if(!confirm("Remove staff member?")) return;
+            const res = await fetch(`/api/admin/teachers/${id}`, { method: 'DELETE' });
+            const d = await res.json();
+            renderTeachers(d.teachers);
+        }
+
+        async function updateTeacherPrompt(id, currentName, currentRole) {
+            const newName = prompt("Update Name:", currentName);
+            const newRole = prompt("Update Role:", currentRole);
+            if(!newName || !newRole) return;
+
+            const res = await fetch(`/api/admin/teachers/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ name: newName, role: newRole })
+            });
+            const d = await res.json();
+            renderTeachers(d.teachers);
+        }
+
+        async function provisionStudent() {
+            const studentId = document.getElementById('sId').value;
+            const name = document.getElementById('sName').value;
+            const password = document.getElementById('sPass').value;
+
+            const res = await fetch('/api/admin/students', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ studentId, name, password })
+            });
+            const d = await res.json();
+            alert(d.msg);
+            syncConsoleData();
+        }
+
+        function renderSubmissions(students) {
+            const container = document.getElementById('submission-rows');
+            container.innerHTML = students.map(s => `
+                <tr class="border-b border-gray-800 hover:bg-gray-800">
+                    <td class="p-3">${s.id}</td>
+                    <td class="p-3">${s.name}</td>
+                    <td class="p-3 font-bold text-red-400">${s.score !== null ? 'Logged System Verify' : 'No submission'}</td>
+                    <td class="p-3 font-bold text-emerald-400">${s.score !== null ? s.score + ' / 10' : 'N/A'}</td>
+                    <td class="p-3 flex justify-center gap-3">
+                        <button onclick="editGrade('${s.id}')" class="bg-gray-700 text-xs px-2 py-1 rounded text-yellow-300">Edit Score</button>
+                        <button onclick="togglePublication('${s.id}', ${s.score}, ${!s.gradesPublished})" class="text-xs px-2 py-1 rounded ${s.gradesPublished ? 'bg-red-900 text-red-200' : 'bg-emerald-900 text-emerald-200'}">
+                            ${s.gradesPublished ? 'Revoke Publication' : 'Publish Report Card'}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function editGrade(studentId) {
+            const target = prompt("Enter replacement raw score value:");
+            if (target === null) return;
+            await togglePublication(studentId, parseInt(target), false);
+        }
+
+        async function togglePublication(studentId, finalScore, publish) {
+            await fetch('/api/admin/publish-grades', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ studentId, finalScore, publish })
+            });
+            syncConsoleData();
+        }
+    </script>
+</body>
+</html>
